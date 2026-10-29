@@ -496,6 +496,15 @@ const BYID=Object.fromEntries(ALL.map(q=>[q.id,q]));
 // 20 més probables de teoria pura i 10 numèriques més probables
 const PROB_TEO=["a2604-1","a2604-2","a2604-3","a2604-5","a2604-7","a2604-14","a2604-16","a2501-12","a2501-13","a2501-14","a2307-11","a2307-13","a2401-3","a2401-11","a2401-12","a2401-15","a2507-15","a2507-18","a2507-19","a2406-15"];
 const PROB_NUM=["a2604-8","a2604-9","a2604-19","a2604-20","a2501-16","a2401-18","a2307-20","a2401-10","a2407-7","a2601-18"];
+// Per tema: les 10 de teoria i les 5 de càlcul més importants i amb més opcions de sortir (preguntes ja existents)
+const TOP={
+1:{teo:["a2604-1","a2604-2","a2604-3","a2604-10","a2406-1","a2307-11","a2401-9","a2401-11","a2401-2","a2401-1"],num:["a2604-8","a2406-20","a2507-3","a2407-7","a2301-20"]},
+2:{teo:["a2604-4","a2604-5","a2604-6","a2501-12","a2501-13","a2307-13","a2507-15","a2301-4","a2506-13","a2507-2"],num:["a2307-20","a2407-14","a2301-19","a2306-8","a2507-11"]},
+3:{teo:["a2604-7","a2401-12","a2301-5","a2406-5","n27","n28","n29","n30","n31","n33"],num:["a2604-9","a2501-16","a2507-12","a2407-12","a2307-7"]},
+4:{teo:["a2604-18","a2507-18","a2507-19","a2501-15","a2306-2","a2301-11","a2406-14","a2306-5","a2407-17","a2601-2"],num:["a2401-10","a2407-18","a2501-17","a2506-17","a2501-18"]},
+5:{teo:["a2604-11","a2604-12","a2604-14","a2604-16","a2604-17","a2401-3","a2407-8","a2501-5","a2406-16","a2406-18"],num:["a2604-20","a2401-18","a2601-18","a2407-3","a2301-16"]},
+6:{teo:["a2604-13","a2604-15","a2501-14","a2601-6","a2406-9","a2406-11","a2401-16","a2306-16","a2301-7","a2301-15"],num:["a2604-19","a2601-16","a2507-7","a2401-4","a2506-1"]}
+};
 const KIND={teo:{n:"Teoria",f:q=>!q.calc},num:{n:"Càlcul",f:q=>q.calc}};
 const PROBABLES=["a2604-1","a2604-2","a2604-3","a2604-5","a2604-7","a2604-8","a2604-14","a2604-16","a2604-19","a2604-20","a2501-12","a2501-13","a2501-16","a2307-11","a2307-13","a2401-3","a2401-11","a2401-12","a2401-15","a2507-15","a2507-18","a2507-19","a2501-14","a2406-15","a2306-10"];
 // Simulacre tipus examen: 20 preguntes, reparte segons el 10/04/26 i l’històric
@@ -556,7 +565,8 @@ function home(){
   const tot=Object.values(S.q).reduce((a,r)=>a+r.n,0),ok=Object.values(S.q).reduce((a,r)=>a+r.ok,0);
   const nfail=failedIds().length;
   const rows=Object.keys(TEMAS).map(t=>`<div class="tgroup"><div class="sub tname" style="color:${TEMAS[t].c}">${t<7?"Tema "+t+". ":""}${TEMAS[t].n}</div>`+["teo","num"].map(k=>{const set=ALL.filter(q=>q.t==t&&KIND[k].f(q)),no=set.filter(q=>q.src!="nueva").length;
-    return `<button class="row" data-act="tema" data-t="${t}" data-k="${k}">${badge(t)}<span class="txt"><b>${KIND[k].n}</b><span class="sub">${set.length} preguntes · ${no} oficials${set.length-no?" + "+(set.length-no)+" noves":""}</span></span><span class="pct">${pctSet(set)}</span></button>`}).join("")+`</div>`).join("");
+    return `<button class="row" data-act="tema" data-t="${t}" data-k="${k}">${badge(t)}<span class="txt"><b>${KIND[k].n}</b><span class="sub">${set.length} preguntes · ${no} oficials${set.length-no?" + "+(set.length-no)+" noves":""}</span></span><span class="pct">${pctSet(set)}</span></button>`}).join("")+(TOP[t]?["teo","num"].map(k=>{const set=TOP[t][k].map(id=>BYID[id]);
+    return `<button class="row" data-act="top" data-t="${t}" data-k="${k}">${badge(t)}<span class="txt"><b>Les ${set.length} ${k=="teo"?"de teoria":"de càlcul"} més probables</b><span class="sub">Les més importants del tema · correcció a cada una</span></span><span class="pct">${pctSet(set)}</span></button>`}).join(""):"")+`</div>`).join("");
   const nft=failedIds().filter(id=>!BYID[id].calc).length,nfc=nfail-nft;
   app.innerHTML=`
   <div class="hero">
@@ -605,6 +615,7 @@ function home(){
     if(a=="all")startQuiz({title:"Totes barrejades",qs:shuffle(ALL),mode:"inst"});
     if(a=="tema")startQuiz({title:(t<7?"Tema "+t:"Aero")+" · "+KIND[k].n,qs:shuffle(ALL.filter(q=>q.t==t&&KIND[k].f(q))),mode:"inst"});
     if(a=="mini")miniView();
+    if(a=="top")startQuiz({title:"Tema "+t+" · top "+(k=="teo"?"teoria":"càlcul"),qs:shuffle(TOP[t][k].map(id=>BYID[id])),mode:"inst"});
     if(a=="mand")mandView();
     if(a=="audio")audioView();
     if(a=="fail")failView(k);
