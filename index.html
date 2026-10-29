@@ -13,7 +13,6 @@
 <link rel="manifest" href="manifest.json">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
 <title>Turbomàquines Test</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -57,8 +56,13 @@ h2{font-family:var(--display);font-weight:600;font-size:.8rem;text-transform:upp
 .badge sub{font-size:.6rem}
 .pct{font-family:var(--mono);font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
 .official{border-left:4px solid var(--accent)}
+.tgroup{display:flex;flex-direction:column;gap:6px}
+.tgroup+.tgroup{margin-top:8px}
+.tname{font-weight:600;padding-left:2px}
+.mini{display:flex;gap:10px;align-items:baseline;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.mini .tag{flex:none}
 .hero{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;gap:14px;align-items:center}
-.hero .big{font-family:var(--display);font-weight:800;font-size:2.2rem;line-height:1;font-variant-numeric:tabular-nums}
+.hero .big{white-space:nowrap;font-family:var(--display);font-weight:800;font-size:2.2rem;line-height:1;font-variant-numeric:tabular-nums}
 .segbar{display:flex;height:12px;border-radius:99px;overflow:hidden;margin:12px 0 8px}
 .segbar i{display:block;height:100%}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -480,13 +484,19 @@ const EXAMS={"2604":"Final 10/04/26","2301":"Final 24/01/23","2306":"Final 14/06
 const OLD_ORDER=["2601","2507","2506","2501","2407","2406","2401","2307","2306","2301"];
 
 // ---------- BANC ----------
-const OFICIALS=[...OFF_A,...OFF_B,...OFF_C].map(r=>({id:"a"+r[0]+"-"+r[1],src:r[0],n:r[1],t:r[2],q:r[3],o:r[4],a:r[5],e:r[6],img:r[7]||null}));
+// Preguntes oficials que demanen calcular alguna cosa (la resta són de teoria pura)
+const CALC_OFF={"2604":[8,9,19,20],"2301":[16,17,18,19,20],"2306":[3,4,8,10,11,15,17],"2307":[7,8,9,10,17,18,19,20],"2401":[4,10,18,19,20],"2406":[3,4,7,8,12,19,20],"2407":[1,2,3,4,7,12,14,18,19],"2501":[16,17,18,19,20],"2506":[1,2,3,16,17,20],"2507":[3,4,5,6,7,8,11,12,13],"2601":[5,16,17,18,19,20]};
+const OFICIALS=[...OFF_A,...OFF_B,...OFF_C].map(r=>({id:"a"+r[0]+"-"+r[1],src:r[0],n:r[1],t:r[2],q:r[3],o:r[4],a:r[5],e:r[6],img:r[7]||null,calc:(CALC_OFF[r[0]]||[]).includes(r[1])}));
 const EXAMEN=OFICIALS.filter(q=>q.src=="2604");
 const ANTERIORS=OFICIALS.filter(q=>q.src!="2604");
 const NUEVAS=NUEVAS_RAW.map((r,i)=>({id:"n"+(i+1),t:r[0],q:r[1],o:r[2],a:r[3],e:r[4],calc:!!r[5],src:"nueva"}));
 const ALL=[...OFICIALS,...NUEVAS];
 const BYID=Object.fromEntries(ALL.map(q=>[q.id,q]));
 // Conceptes que es repeteixen més als exàmens (amb el pes per temes del 10/04/26)
+// 20 més probables de teoria pura i 10 numèriques més probables
+const PROB_TEO=["a2604-1","a2604-2","a2604-3","a2604-5","a2604-7","a2604-14","a2604-16","a2501-12","a2501-13","a2501-14","a2307-11","a2307-13","a2401-3","a2401-11","a2401-12","a2401-15","a2507-15","a2507-18","a2507-19","a2406-15"];
+const PROB_NUM=["a2604-8","a2604-9","a2604-19","a2604-20","a2501-16","a2401-18","a2307-20","a2401-10","a2407-7","a2601-18"];
+const KIND={teo:{n:"Teoria",f:q=>!q.calc},num:{n:"Càlcul",f:q=>q.calc}};
 const PROBABLES=["a2604-1","a2604-2","a2604-3","a2604-5","a2604-7","a2604-8","a2604-14","a2604-16","a2604-19","a2604-20","a2501-12","a2501-13","a2501-16","a2307-11","a2307-13","a2401-3","a2401-11","a2401-12","a2401-15","a2507-15","a2507-18","a2507-19","a2501-14","a2406-15","a2306-10"];
 // Simulacre tipus examen: 20 preguntes, reparte segons el 10/04/26 i l’històric
 const SIM={1:4,2:3,3:2,4:2,5:6,6:3};
@@ -545,8 +555,9 @@ function home(){
   setHeader("Turbomàquines · Test",false);
   const tot=Object.values(S.q).reduce((a,r)=>a+r.n,0),ok=Object.values(S.q).reduce((a,r)=>a+r.ok,0);
   const nfail=failedIds().length;
-  const rows=Object.keys(TEMAS).map(t=>{const set=ALL.filter(q=>q.t==t),no=set.filter(q=>q.src!="nueva").length;
-    return `<button class="row" data-act="tema" data-t="${t}">${badge(t)}<span class="txt"><b>${t<7?"Tema "+t+". ":""}${TEMAS[t].n}</b><span class="sub">${set.length} preguntes · ${no} oficials${t<7?" + "+(set.length-no)+" noves":""}</span></span><span class="pct">${pctSet(set)}</span></button>`}).join("");
+  const rows=Object.keys(TEMAS).map(t=>`<div class="tgroup"><div class="sub tname" style="color:${TEMAS[t].c}">${t<7?"Tema "+t+". ":""}${TEMAS[t].n}</div>`+["teo","num"].map(k=>{const set=ALL.filter(q=>q.t==t&&KIND[k].f(q)),no=set.filter(q=>q.src!="nueva").length;
+    return `<button class="row" data-act="tema" data-t="${t}" data-k="${k}">${badge(t)}<span class="txt"><b>${KIND[k].n}</b><span class="sub">${set.length} preguntes · ${no} oficials${set.length-no?" + "+(set.length-no)+" noves":""}</span></span><span class="pct">${pctSet(set)}</span></button>`}).join("")+`</div>`).join("");
+  const nft=failedIds().filter(id=>!BYID[id].calc).length,nfc=nfail-nft;
   app.innerHTML=`
   <div class="hero">
     <div class="big">${tot?Math.round(100*ok/tot)+" %":"–"}</div>
@@ -562,6 +573,8 @@ function home(){
   <div class="list">
     <button class="row official" data-act="sim"><span class="txt"><b>Simulacre tipus examen</b><span class="sub">20 preguntes amb el repartiment de l’examen · +1 / −1/3 · ${SIM_MIN} min · cada cop diferents</span></span></button>
     <button class="row" data-act="prob"><span class="txt"><b>Les ${PROBABLES.length} més probables</b><span class="sub">Els conceptes que més es repeteixen · correcció a cada una</span></span><span class="pct">${pctSet(PROBABLES.map(id=>BYID[id]))}</span></button>
+    <button class="row" data-act="probT"><span class="txt"><b>Les 20 més probables · teoria</b><span class="sub">Només teoria pura · correcció a cada una</span></span><span class="pct">${pctSet(PROB_TEO.map(id=>BYID[id]))}</span></button>
+    <button class="row" data-act="probN"><span class="txt"><b>Les 10 numèriques més probables</b><span class="sub">Els càlculs que més es repeteixen · correcció a cada una</span></span><span class="pct">${pctSet(PROB_NUM.map(id=>BYID[id]))}</span></button>
     <button class="row" data-act="all"><span class="txt"><b>Totes barrejades</b><span class="sub">Les ${ALL.length} preguntes a l’atzar · correcció a cada una</span></span><span class="pct">${pctSet(ALL)}</span></button>
   </div>
   <h2>Per temes</h2>
@@ -569,27 +582,33 @@ function home(){
   <h2>Teoria</h2>
   <div class="list">
     <button class="row" data-act="mand"><span class="txt"><b>Els 20 manaments</b><span class="sub">Les idees i fórmules que resolen més preguntes</span></span></button>
+    <button class="row" data-act="mini"><span class="txt"><b>Manaments exprés</b><span class="sub">${MINI.length} idees d’una sola frase o relació, per repassar ràpid</span></span></button>
     <button class="row" data-act="audio"><span class="txt"><b>Àudios per tema</b><span class="sub">Resum parlat de cada tema · ~2 min</span></span></button>
   </div>
   <h2>Repàs</h2>
   <div class="list">
-    <button class="row" data-act="fail"><span class="txt"><b>Fallades</b><span class="sub">Preguntes amb l’última resposta incorrecta</span></span><span class="pct">${nfail}</span></button>
-    <button class="row" data-act="stats"><span class="txt"><b>Estadístiques</b><span class="sub">Temes, exàmens oficials i simulacres</span></span></button>
+    <button class="row" data-act="fail" data-k="teo"><span class="txt"><b>Fallades · teoria</b><span class="sub">Teoria pura amb l’última resposta incorrecta</span></span><span class="pct">${nft}</span></button>
+    <button class="row" data-act="fail" data-k="num"><span class="txt"><b>Fallades · càlcul</b><span class="sub">Preguntes numèriques amb l’última resposta incorrecta</span></span><span class="pct">${nfc}</span></button>
+    <button class="row" data-act="stats" data-k="teo"><span class="txt"><b>Estadístiques · teoria</b><span class="sub">Encerts per tema i per examen oficial, només teoria</span></span></button>
+    <button class="row" data-act="stats" data-k="num"><span class="txt"><b>Estadístiques · càlcul</b><span class="sub">Encerts per tema i per examen oficial, només càlcul</span></span></button>
   </div>
   <p class="sub small" style="margin-top:24px">El progrés es desa en aquest navegador i dispositiu. Les preguntes oficials surten tal qual (text, ordre i lletres); les noves barregen l’ordre de les opcions a cada intent.</p>`;
   app.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
-    const a=b.dataset.act,t=b.dataset.t;
+    const a=b.dataset.act,t=b.dataset.t,k=b.dataset.k;
     if(a=="ex26")startQuiz({title:"Final 10/04/26",qs:EXAMEN,mode:"inst"});
     if(a=="ex26x")startQuiz({title:"Examen 10/04/26",qs:EXAMEN,mode:"exam",gen:()=>EXAMEN,timer:SIM_MIN});
     if(a=="ant")examsView();
     if(a=="sim")startQuiz({title:"Simulacre",qs:simExam(),mode:"exam",gen:simExam,timer:SIM_MIN});
     if(a=="prob")startQuiz({title:"Més probables",qs:shuffle(PROBABLES.map(id=>BYID[id])),mode:"inst"});
+    if(a=="probT")startQuiz({title:"Probables · teoria",qs:shuffle(PROB_TEO.map(id=>BYID[id])),mode:"inst"});
+    if(a=="probN")startQuiz({title:"Probables · càlcul",qs:shuffle(PROB_NUM.map(id=>BYID[id])),mode:"inst"});
     if(a=="all")startQuiz({title:"Totes barrejades",qs:shuffle(ALL),mode:"inst"});
-    if(a=="tema")startQuiz({title:t<7?"Tema "+t:"Aerogeneradors",qs:shuffle(ALL.filter(q=>q.t==t)),mode:"inst"});
+    if(a=="tema")startQuiz({title:(t<7?"Tema "+t:"Aero")+" · "+KIND[k].n,qs:shuffle(ALL.filter(q=>q.t==t&&KIND[k].f(q))),mode:"inst"});
+    if(a=="mini")miniView();
     if(a=="mand")mandView();
     if(a=="audio")audioView();
-    if(a=="fail")failView();
-    if(a=="stats")statsView();
+    if(a=="fail")failView(k);
+    if(a=="stats")statsView(k);
   });
 }
 function pctSet(set){let n=0,ok=0;set.forEach(q=>{const r=S.q[q.id];if(r){n+=r.n;ok+=r.ok}});return n?Math.round(100*ok/n)+" %":"–"}
@@ -627,7 +646,7 @@ function tick(){
   if(el){const m=Math.floor(left/60000),s=Math.floor(left%60000/1000);el.textContent=`${m}:${String(s).padStart(2,"0")}`;el.classList.toggle("low",left<5*60000)}
   if(left<=0){stopTimer();finishExam(true)}
 }
-function srcTag(q){return q.src=="nueva"?(q.calc?"Nova · càlcul":"Nova"):"Oficial · "+EXAMS[q.src]}
+function srcTag(q){return (q.src=="nueva"?"Nova":"Oficial · "+EXAMS[q.src])+(q.calc?" · càlcul":" · teoria")}
 function renderQ(){
   const q=Q.qs[Q.i],T=TEMAS[q.t],n=Q.qs.length;
   setHeader(Q.title,true,Q.back);
@@ -827,45 +846,119 @@ function mandView(){
   document.getElementById("goProb").onclick=()=>startQuiz({title:"Més probables",qs:shuffle(PROBABLES.map(id=>BYID[id])),mode:"inst"});
 }
 
-// ---------- FALLADES ----------
-function failView(){
-  setHeader("Fallades",true);
-  const ids=failedIds();
-  if(!ids.length){app.innerHTML=`<p class="empty">No tens preguntes fallades pendents.<br>Quan en fallis una, apareixerà aquí fins que l’encertis.</p>`;return}
+// ---------- MANAMENTS EXPRÉS (una frase o una relació) ----------
+const MINI=[
+[1,"Bomba i ventilador: generadores. Turbina i aerogenerador: receptores. Totes de flux incompressible (Ma < 0,3)."],
+[1,"Oleohidràulica (excavadora, tren d’aterratge): desplaçament positiu, no turbomàquina."],
+[1,"η<sub>h</sub> = H/H<sub>th</sub> · η<sub>v</sub> = Q/Q<sub>th</sub> · η = η<sub>h</sub>η<sub>v</sub>η<sub>m</sub>."],
+[1,"En bomba el rodet mou més cabal que el circuit (Q<sub>th</sub> > Q)."],
+[1,"Fricció de disc ∝ ω³D⁵: baixa η<sub>m</sub>, pesa en centrífugues d’H alta."],
+[1,"Juntes: pugen η<sub>v</sub>. Laberíntiques: sense contacte, entre sortida i entrada del rodet."],
+[1,"Cabal baix: menys fricció, més xoc i recirculació. No baixen «tots» els rendiments."],
+[1,"Centrífuga: P mínima a Q = 0, vàlvula tancada. Axial: P màxima a Q = 0, vàlvula oberta, zona inestable a Q baix."],
+[1,"Multicel·lular = sèrie (+H). Doble entrada = paral·lel (+Q) i menys empenta axial."],
+[1,"Inductor: + pressió a l’entrada contra cavitació. Difusor: velocitat → pressió."],
+[1,"H ∝ n²D² · Q ∝ nD³ · P ∝ ρn³D⁵."],
+[1,"H = A − BQ² → A’ = k<sub>H</sub>A · B’ = B·k<sub>H</sub>/k<sub>Q</sub>²."],
+[1,"(1 − η<sub>p</sub>)/(1 − η<sub>m</sub>) = (D<sub>m</sub>/D<sub>p</sub>)<sup>0,25</sup>: la gran rendeix més."],
+[1,"n<sub>q</sub> = n√Q/H<sup>3/4</sup>: baixa → centrífuga, alta → axial."],
+[2,"Cavita si NPSH<sub>d</sub> < NPSH<sub>r</sub>."],
+[2,"Punt crític: entrada de l’àlep, cara de succió."],
+[2,"El dany és al col·lapse de la bombolla (microjet i ona de xoc), no al créixer."],
+[2,"NPSH<sub>d</sub> = p<sub>0</sub>/ρg + (z<sub>0</sub> − z<sub>1</sub>) − h<sub>asp</sub> − p<sub>v</sub>/ρg."],
+[2,"Més NPSH<sub>d</sub>: bomba més avall, aspiració curta i ampla, líquid fred, dipòsit inferior pressuritzat."],
+[2,"Altitud o més cabal → menys NPSH<sub>d</sub>. L’NPSH<sub>r</sub> és de la bomba i creix amb Q."],
+[2,"NPSH<sub>incipient</sub> > NPSH<sub>desenvolupada</sub> (criteri: H cau un 3 %)."],
+[2,"h<sub>f</sub> = 8fLQ²/(π²D⁵g) · H<sub>r</sub> = H<sub>o</sub> + kQ² · H<sub>b</sub> = H<sub>o</sub> + h<sub>f</sub>."],
+[2,"Piezomètrica acaba a la superfície del dipòsit d’arribada; la de càrrega, c²/2g per sobre."],
+[3,"Vàlvula en sèrie: −Q, +H de bomba, dissipa. No en axials."],
+[3,"Bypass: Q<sub>b</sub> = Q<sub>circ</sub> + Q<sub>v</sub>. Puja el cabal de la bomba. Sí en axials."],
+[3,"Velocitat variable: òptim en rendiment, cal variador. A’ = A(n<sub>2</sub>/n<sub>1</sub>)², B igual."],
+[3,"Homòleg ≠ nou punt de funcionament: talla la corba nova amb el circuit."],
+[3,"Sèrie: mateix Q, se sumen H. Paral·lel: mateixa H, se sumen Q. Mai 2H ni 2Q."],
+[3,"Dues iguals: sèrie H = 2A − 2BQ² · paral·lel H = A − (B/4)Q²."],
+[4,"Pelton: salt alt, Q petit, acció, injector. Francis: salt mitjà, directrius. Kaplan: salt baix, doble regulació."],
+[4,"n<sub>s</sub> més baixa: Pelton. Grups més potents: Francis."],
+[4,"H<sub>n</sub> = H<sub>b</sub> − pèrdues (forçada + aspiració) − difusió."],
+[4,"P<sub>el</sub> = ρgQH<sub>n</sub>·η<sub>t</sub>·η<sub>gen</sub> (en turbina es multiplica)."],
+[4,"En turbina Q<sub>rodet</sub> = η<sub>v</sub>·Q<sub>circuit</sub> (al revés que en bomba)."],
+[4,"n = 60f/p (p = parells de pols)."],
+[4,"Francis a càrrega parcial: c<sub>2u</sub> > 0, torxa ampla amb rotació. Sobrecàrrega: torxa estreta."],
+[4,"Ordre Francis: cambra espiral → directrius → rodet → tub d’aspiració."],
+[5,"c = u + w · u = πDn/60 · c<sub>m</sub> = Q/(πDb)."],
+[5,"tan β = c<sub>m</sub>/w<sub>u</sub> · w<sub>u</sub> = u − c<sub>u</sub>."],
+[5,"gH<sub>th</sub> = u<sub>2</sub>c<sub>2u</sub> − u<sub>1</sub>c<sub>1u</sub> (bomba)."],
+[5,"H<sub>th</sub> = u<sub>2</sub>²/g − u<sub>2</sub>cot β<sub>2f</sub>·Q/(πD<sub>2</sub>b<sub>2</sub>g); a Q = 0, u<sub>2</sub>²/g."],
+[5,"β<sub>2</sub> = 90°: H<sub>th</sub> no depèn de Q."],
+[5,"i = β<sub>1a</sub> − β<sub>1f</sub>: Q baix → i > 0; Q alt → i < 0."],
+[5,"Desviació d = β<sub>2a</sub> − β<sub>2f</sub> > 0 sempre; baixa c<sub>2u</sub> però no és pèrdua."],
+[5,"Corbats endavant: c<sub>2u</sub> > u<sub>2</sub>, més prestacions, menys rendiment."],
+[5,"Prerotació en el sentit de gir: menys H<sub>th</sub>."],
+[5,"Difusor orientat amb c<sub>2</sub> (α<sub>2</sub>), no amb w."],
+[5,"Francis en disseny: c<sub>2u</sub> = 0 → gH<sub>n</sub>η<sub>h</sub> = u<sub>1</sub>c<sub>1u</sub>."],
+[6,"Axial: u<sub>1</sub> = u<sub>2</sub>, c<sub>m</sub> constant, sense terme centrífug."],
+[6,"c<sub>m</sub> = Q/[π(D<sub>t</sub>² − D<sub>h</sub>²)/4]."],
+[6,"Axial: H<sub>est</sub> = (w<sub>1</sub>² − w<sub>2</sub>²)/2g, w<sub>2</sub> < w<sub>1</sub>."],
+[6,"Àlep torçat: β més petit a la punta (u més gran)."],
+[6,"Directriu de sortida: c<sub>3u</sub> = 0 i recupera pressió."],
+[6,"Directriu d’entrada amb prerotació a favor del gir: menys w, menys fricció."],
+[6,"Rotating stall: cabal baix, cara de succió, es propaga d’àlep en àlep."],
+[6,"Tip vortex: escletxa de punta, de cara de pressió a cara de succió."],
+[6,"Pelton: c = √(2gH<sub>n</sub>), u/c = 0,5 ideal (0,40-0,48 real), D = 2u/ω."],
+[7,"P<sub>mec</sub> = C<sub>p</sub>·½ρAc³ · C<sub>p,Betz</sub> = 0,593 (teòric) · λ = 2πrn/(60c)."]
+];
+function miniView(){
+  setHeader("Manaments exprés",true);
+  app.innerHTML=`<p class="sub" style="margin-top:16px">Una idea o una relació per línia. Per a l’explicació completa, obre els 20 manaments.</p>
+  ${Object.keys(TEMAS).map(t=>{const it=MINI.filter(m=>m[0]==t);return it.length?`<h2 style="color:${TEMAS[t].c}">${t<7?"Tema "+t+". ":""}${TEMAS[t].n}</h2><div class="list">${it.map(m=>`<div class="mini"><span class="tag" style="color:${TEMAS[t].c}">${tlab(+t)}</span><span>${fmt(m[1])}</span></div>`).join("")}</div>`:""}).join("")}
+  <div class="actions"><button class="btn" id="goMand">Els 20 manaments</button></div>`;
+  document.getElementById("goMand").onclick=mandView;
+}
+
+// ---------- FALLADES (teoria o càlcul) ----------
+function failView(k){
+  const K=KIND[k];
+  setHeader("Fallades · "+K.n.toLowerCase(),true);
+  const ids=failedIds().filter(id=>K.f(BYID[id]));
+  if(!ids.length){app.innerHTML=`<p class="empty">No tens preguntes de ${K.n.toLowerCase()} fallades pendents.<br>Quan en fallis una, apareixerà aquí fins que l’encertis.</p>`;return}
   const qs=ids.map(id=>BYID[id]);
   const byT={};qs.forEach(q=>(byT[q.t]=byT[q.t]||[]).push(q));
-  app.innerHTML=`<div class="hero"><div class="big">${qs.length}</div><div class="sub">Preguntes amb l’última resposta incorrecta. Quan les encertes, desapareixen.</div></div>
+  const back=()=>failView(k);
+  app.innerHTML=`<div class="hero"><div class="big">${qs.length}</div><div class="sub">Preguntes de ${K.n.toLowerCase()} amb l’última resposta incorrecta. Quan les encertes, desapareixen.</div></div>
   <div class="actions"><button class="btn" id="go">Repassar-les totes</button></div>
   <h2>Per tema</h2><div class="list">${Object.keys(byT).sort().map(t=>`<button class="row" data-t="${t}">${badge(t)}<span class="txt"><b>${t<7?"Tema "+t:"Aerogeneradors"}</b><span class="sub">${TEMAS[t].n}</span></span><span class="pct">${byT[t].length}</span></button>`).join("")}</div>
   <h2>Llistat</h2><div class="list">${qs.map(q=>revCard(q,null).replace('class="exp blank"','class="exp good"').replace(">En blanc<",">Solució<")).join("")}</div>`;
-  document.getElementById("go").onclick=()=>startQuiz({title:"Fallades",qs:shuffle(qs),mode:"inst",back:failView});
-  app.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>startQuiz({title:"Fallades "+tlab(+b.dataset.t),qs:shuffle(byT[b.dataset.t]),mode:"inst",back:failView}));
+  document.getElementById("go").onclick=()=>startQuiz({title:"Fallades · "+K.n.toLowerCase(),qs:shuffle(qs),mode:"inst",back});
+  app.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>startQuiz({title:"Fallades "+tlab(+b.dataset.t)+" · "+K.n.toLowerCase(),qs:shuffle(byT[b.dataset.t]),mode:"inst",back}));
 }
 
-// ---------- ESTADÍSTIQUES ----------
-function statsView(){
-  setHeader("Estadístiques",true);
-  const rows=Object.keys(TEMAS).map(t=>({t,...temaStats(t)}));
+// ---------- ESTADÍSTIQUES (teoria o càlcul) ----------
+function statsView(k){
+  const K=KIND[k];
+  setHeader("Estadístiques · "+K.n.toLowerCase(),true);
+  const stat=set=>{let n=0,ok=0,seen=0;set.forEach(q=>{const r=S.q[q.id];if(r){n+=r.n;ok+=r.ok;seen++}});return{n,ok,seen,total:set.length,pct:n?Math.round(100*ok/n):null}};
+  const rows=Object.keys(TEMAS).map(t=>({t,...stat(ALL.filter(q=>q.t==t&&K.f(q)))})).filter(r=>r.total);
   const ranked=rows.filter(r=>r.pct!=null).sort((a,b)=>a.pct-b.pct);
   const worst=ranked[0],best=ranked[ranked.length-1];
+  const tot=stat(ALL.filter(K.f));
   const sims=S.sims.slice().reverse().slice(0,10);
-  const offRow=(lab,set)=>`<div class="stat"><div class="top"><span>${lab}</span><span class="pct">${pctSet(set)}</span></div></div>`;
+  const offRow=(lab,set)=>{set=set.filter(K.f);return set.length?`<div class="stat"><div class="top"><span>${lab} <span class="sub">(${set.length})</span></span><span class="pct">${pctSet(set)}</span></div></div>`:""};
   app.innerHTML=`
-  ${ranked.length>=2?`<div class="hero"><div class="sub">Millor tema: <b style="color:${TEMAS[best.t].c}">${tlab(+best.t)} ${TEMAS[best.t].n}</b> (${best.pct} %)<br>A reforçar: <b style="color:${TEMAS[worst.t].c}">${tlab(+worst.t)} ${TEMAS[worst.t].n}</b> (${worst.pct} %)</div></div>`:""}
-  <h2>Encerts per tema</h2>
+  <div class="hero"><div class="big">${tot.pct==null?"–":tot.pct+" %"}</div><div class="sub">Encerts en ${K.n.toLowerCase()}: ${tot.ok}/${tot.n} respostes · ${tot.seen}/${tot.total} preguntes vistes${ranked.length>=2?`<br>Millor: <b style="color:${TEMAS[best.t].c}">${tlab(+best.t)}</b> (${best.pct} %) · A reforçar: <b style="color:${TEMAS[worst.t].c}">${tlab(+worst.t)}</b> (${worst.pct} %)`:""}</div></div>
+  <h2>Encerts per tema · ${K.n.toLowerCase()}</h2>
   <div class="list">${rows.map(r=>`<div class="stat"><div class="top"><span><b>${tlab(+r.t)}</b> ${TEMAS[r.t].n}</span><span class="pct">${r.pct==null?"sense dades":r.pct+" %"}</span></div>
     <div class="meter"><i style="width:${r.pct||0}%;background:${TEMAS[r.t].c}"></i></div>
     <div class="sub small" style="margin-top:6px;font-variant-numeric:tabular-nums">${r.ok}/${r.n} respostes correctes · ${r.seen}/${r.total} preguntes vistes</div></div>`).join("")}</div>
-  <h2>Blocs oficials</h2>
-  <div class="list">${offRow("Final 10/04/26",EXAMEN)}${OLD_ORDER.map(k=>offRow(EXAMS[k],ANTERIORS.filter(q=>q.src==k))).join("")}${offRow("Preguntes noves",NUEVAS)}</div>
+  <h2>Blocs oficials · ${K.n.toLowerCase()}</h2>
+  <div class="list">${offRow("Final 10/04/26",EXAMEN)}${OLD_ORDER.map(x=>offRow(EXAMS[x],ANTERIORS.filter(q=>q.src==x))).join("")}${offRow("Preguntes noves",NUEVAS)}</div>
   <h2>Últims simulacres</h2>
   <div class="list">${sims.length?sims.map(s=>`<div class="stat"><div class="top"><span>${esc(s.title)} · ${new Date(s.d).toLocaleDateString("ca-ES",{day:"numeric",month:"short"})}</span><span class="pct" style="color:var(--fg)">${String(s.nota).replace(".",",")}</span></div><div class="sub small">${s.ok} bé · ${s.bad} malament · ${s.bl} en blanc</div></div>`).join(""):'<p class="empty">Encara no has fet cap simulacre.</p>'}</div>
   <h2>Dades</h2>
   <div id="resetBox"><button class="btn ghost" id="reset">Esborrar tot el progrés</button></div>`;
   document.getElementById("reset").onclick=()=>{
-    document.getElementById("resetBox").innerHTML=`<div class="confirm"><span>Segur? S’esborren estadístiques, fallades i simulacres.</span><button class="btn" id="yes" style="flex:none;padding:10px 16px">Esborrar</button><button class="btn ghost" id="no" style="flex:none;padding:10px 16px">Cancel·lar</button></div>`;
-    document.getElementById("yes").onclick=()=>{S={q:{},sims:[]};save();statsView()};
-    document.getElementById("no").onclick=statsView;
+    document.getElementById("resetBox").innerHTML=`<div class="confirm"><span>Segur? S’esborren estadístiques, fallades i simulacres (teoria i càlcul).</span><button class="btn" id="yes" style="flex:none;padding:10px 16px">Esborrar</button><button class="btn ghost" id="no" style="flex:none;padding:10px 16px">Cancel·lar</button></div>`;
+    document.getElementById("yes").onclick=()=>{S={q:{},sims:[]};save();statsView(k)};
+    document.getElementById("no").onclick=()=>statsView(k);
   };
 }
 home();
